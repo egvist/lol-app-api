@@ -56,7 +56,7 @@ py -u data/lolapp_import_html.py saved_players/ 2>&1 | tee import.log
 py data/lolapp_import_html.py data/pages.jsonl --dry-run --limit 2 --print-json
 ```
 
-Program her profil için `OK ...` veya `KAYDEDILDI ...` yazdırır; hata varsa `HATA ...` ve dosya/URL bilgisi basar. `--dry-run` PostgreSQL bağlantısı açmaz.
+Program her profil için `OK ...` veya `SAVED ...` yazdırır; hata varsa `ERROR ...` ve dosya/URL bilgisi basar. `--dry-run` PostgreSQL bağlantısı açmaz.
 
 ## 3. Hangi tablolar dolduruluyor?
 

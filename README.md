@@ -57,6 +57,7 @@ py -m unittest test_riot_sync_offline -v
 
 | Doküman | İçerik |
 |---|---|
+| [docs/collecting-html.md](docs/collecting-html.md) | LOLPros HTML'lerini url-html-collector ile `pages.jsonl` olarak toplama |
 | [docs/html-import.md](docs/html-import.md) | Importer seçenekleri, doldurulan tablolar, LP/sezon kuralları |
 | [docs/riot-sync.md](docs/riot-sync.md) | Sync bölümleri, platform çözümleme, maçlar, limitler, kontrol sorguları |
 | [docs/database.md](docs/database.md) | 25 tablonun kolonları, ilişkileri ve veri akışı |
