@@ -26,6 +26,22 @@
 #     dict_row kullanırsan dict gelir. Pydantic modellerine çevirmek için
 #     hangisi daha kolay? (lolapp_riot_sync.py dict_row kullanıyor, oraya bak.)
 #
+# CEVAP:
+#   - Dependency: endpoint'in ihtiyaç duyduğu bir şeyi (burada bağlantı)
+#     FastAPI'nin her istekte senin yerine hazırlamasıdır:
+#     `conn = Depends(get_conn)`. yield'li bir dependency'de yield'den önceki
+#     kısım istekten önce, sonraki kısım cevap gönderildikten sonra çalışır;
+#     temizlik (bağlantıyı geri vermek) oraya yazılır.
+#   - `with pool.connection() as conn:` bloğu bitince bağlantıyı havuza geri
+#     verir, hata olsa bile. Blok hatasız biterse transaction commit, hata
+#     olursa rollback edilir. Geri vermeyi unutursan bağlantı ödünçte kalır
+#     ("connection leak"): max_size kadar istekten sonra havuz boşalır, yeni
+#     istekler timeout'a kadar bekleyip hata alır.
+#   - dict_row ile satır {"id": 1, "nickname": "Vladi", ...} olarak gelir ve
+#     PlayerSummary(**row) ya da PlayerSummary.model_validate(row) ile doğrudan
+#     modele dönüşür. Tuple'da row[0], row[1] diye sırayla eşlemen gerekir ve
+#     SELECT'e kolon eklenince sıra kayar. dict_row daha kolay.
+#
 # İPUCU:
 #   - row_factory'yi havuz oluştururken "kwargs" ile bütün bağlantılara
 #     verebilirsin.
@@ -38,3 +54,21 @@
 #   main.py'deki /health endpoint'ine Depends(get_conn) ekle ve "SELECT 1"
 #   çalıştır. PostgreSQL kapalıyken ne oluyor, açıkken ne oluyor? İkisini de dene.
 # =============================================================================
+
+from psycopg_pool import ConnectionPool
+from api.config import settings
+
+min_size = settings.pool_min_size
+max_size = settings.pool_max_size
+
+connection_pool = ConnectionPool(settings.dsn, min_size=min_size, max_size=max_size, open=False)
+
+
+def open_pool():
+    connection_pool.open()
+def close_pool():
+    connection_pool.close()
+
+def get_conn():
+    with connection_pool.connection() as conn:
+        yield conn

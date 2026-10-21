@@ -39,6 +39,14 @@
 # ARAŞTIR: pytest.mark.parametrize — 3 ve 4 numaralı testleri tek test
 #   fonksiyonunda birden fazla geçersiz değerle çalıştırmak için.
 #
+# CEVAP: @pytest.mark.parametrize aynı testi farklı girdilerle birden fazla
+#   kez çalıştırır; her değer raporda ayrı bir test olarak görünür ve hangi
+#   değerin bozulduğu yazar:
+#     @pytest.mark.parametrize("query", ["role=ADC", "role=middle",
+#                                        "limit=0", "limit=100000", "offset=-1"])
+#     def test_list_players_rejects_invalid_params(client, query):
+#         assert client.get(f"/players?{query}").status_code == 422
+#
 # SONRA: test_accounts.py, test_leaderboard.py, test_matches.py dosyalarını
 #   kendin oluştur. Aynı kalıbı izle: mutlu yol (200), bulunamadı (404),
 #   geçersiz girdi (422).

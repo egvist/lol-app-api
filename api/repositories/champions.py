@@ -22,5 +22,25 @@
 #       varsa sonuç nasıl değişir?
 #     - Şemada idx_participants_champion_role index'i var. Bu sorgu onu kullanıyor mu?
 #
+#   CEVAP:
+#     - COUNT(*) grup başına satır, yani maç sayısıdır. Galibiyet için
+#       COUNT(*) FILTER (WHERE win) daha kısa ve okunur;
+#       SUM(CASE WHEN win THEN 1 ELSE 0 END) her veritabanında çalışır.
+#       İkisi aynı sonucu verir.
+#     - WHERE gruplamadan ÖNCE tek tek satırlara uygulanır; o anda COUNT(*)
+#       henüz hesaplanmamıştır. HAVING gruplamadan SONRA gruplara uygulanır:
+#       HAVING COUNT(*) >= %(min_games)s.
+#     - NULLIF(x, 0) x 0 ise NULL döner; x / NULL = NULL olduğu için sıfıra
+#       bölme hatası yerine NULL gelir. Ortalama KDA:
+#       SUM(kills + assists)::numeric / NULLIF(SUM(deaths), 0). ::numeric
+#       olmadan tam sayı bölmesi yapılır (7 / 2 = 3).
+#     - Oyuncu bazında (players.id). Hesap bazında gruplarsan 3 hesabı olan
+#       bir pro listede 3 ayrı satırda görünür ve maçları bölünür; min_games'i
+#       de hiçbir hesabı geçemeyebilir. Soru "hangi pro oyuncu", yani oyuncu.
+#     - Index (champion_id, team_position) olduğu için ilk kolonu champion_id;
+#       WHERE champion_id = %s, team_position filtresi olmasa da bu index'i
+#       kullanabilir. queue_id matches tablosunda olduğu için o filtre JOIN
+#       sırasında uygulanır. EXPLAIN ile kontrol et.
+#
 #   docs/riot-sync.md bölüm 6'daki örnek sorgu iyi bir başlangıç noktası.
 # =============================================================================

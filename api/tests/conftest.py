@@ -9,6 +9,11 @@
 #      api.main.app'i sarsın ve testlere versin.
 #      ARAŞTIR: FastAPI docs: "Testing". TestClient'ı `with` bloğu içinde
 #      kullanmak lifespan'in (havuzun açılmasının) çalışması için neden gerekli?
+#      CEVAP: TestClient(app) tek başına lifespan'i çalıştırmaz; istekler
+#      havuz açılmadan gider ve get_conn hata verir. `with TestClient(app) as c:`
+#      bloğuna girince lifespan'in yield öncesi (havuzu aç), bloktan çıkınca
+#      yield sonrası (havuzu kapat) çalışır. Fixture'da bloğun içinde
+#      `yield c` yaparsın.
 #
 # ARAŞTIR (iki farklı test yaklaşımı, ikisini de öğren):
 #
@@ -27,6 +32,22 @@
 #      - Avantaj: PostgreSQL olmadan çalışır, hızlıdır.
 #        Kök dizindeki test_riot_sync_offline.py de ağ olmadan test ediyor;
 #        nasıl yaptığına bak.
+#
+# CEVAP:
+#   - A (integration): Gerçek SQL, şema ve bağlantı test edilir; yanlış kolon
+#     adı ya da hatalı bir JOIN ancak burada yakalanır. Daha yavaştır,
+#     PostgreSQL ister ve veriye bağlıdır. Ayrı bir lolapp_test veritabanı ve
+#     sabit test satırlarıyla sonuçlar her seferinde aynı olur.
+#   - B (unit + mock): app.dependency_overrides[get_conn] ya da
+#     monkeypatch.setattr(players_repo, "get_player_by_slug", lambda c, s: None)
+#     ile veritabanına hiç gidilmez. Router mantığı (404, 422, cevap şekli)
+#     milisaniyelerde test edilir, ama SQL'in doğru olduğunu kanıtlamaz.
+#     Dikkat: monkeypatch, fonksiyonun çağrıldığı yerdeki ada uygulanır.
+#     Router "from api.repositories import players" ile import edip
+#     players.get_player_by_slug(...) diye çağırıyorsa modülü patch'lersin.
+#     B'de `with TestClient(app)` kullanırsan lifespan yine havuzu açmaya
+#     çalışır; open_pool/close_pool'u da patch'le ya da `with` kullanma.
+#   - İkisi birbirini tamamlar: B router'ı, A repository'yi ve SQL'i test eder.
 #
 # Önerim: Önce B ile başla (router mantığını test et), sonra A'ya geç.
 #

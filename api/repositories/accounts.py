@@ -15,6 +15,13 @@
 #       idx_accounts_riot_id ON riot_accounts(lower(game_name), lower(tag_line))
 #     Bu index'in kullanılması için WHERE koşulunu nasıl yazmalısın?
 #     EXPLAIN ile sorgu planına bak ve "Index Scan" görüyor musun kontrol et.
+#   CEVAP: WHERE koşulu index tanımındaki ifadeyle birebir aynı olmalı:
+#       WHERE lower(game_name) = lower(%s) AND lower(tag_line) = lower(%s)
+#     ILIKE ya da düz game_name = %s yazarsan bu index kullanılamaz.
+#     Not: tablo küçükken (birkaç bin satır) PostgreSQL index olsa bile Seq
+#     Scan seçebilir, çünkü tabloyu baştan okumak daha ucuzdur. Index'in
+#     kullanılabildiğini görmek için denemede önce SET enable_seqscan = off;
+#     çalıştır. Planda "Index Scan" ya da "Bitmap Index Scan" görürsün.
 #
 # -----------------------------------------------------------------------------
 # FONKSİYON 3: get_account_ranks(conn, account_id, season_year=None)
@@ -39,6 +46,12 @@
 #   En yeni maç önce (matches.started_at DESC).
 #   ARAŞTIR: Burada neden champions için INNER değil LEFT JOIN? champion_id
 #   NULL olabilir mi, ya da champions tablosunda o şampiyon henüz yoksa?
+#   CEVAP: match_participants.champion_id NULL olabilir (şemada NOT NULL yok;
+#     Riot championId vermezse sync NULL yazar). INNER JOIN bu satırları, yani
+#     hesabın o maçlarını listeden tamamen düşürür. LEFT JOIN'de maç yine
+#     görünür, sadece champion_name NULL olur. Sync bilinmeyen şampiyonlar
+#     için "Unknown champion" kaydı açtığından ikinci durum pratikte nadirdir,
+#     ama LEFT JOIN hiçbir maçın kaybolmamasını garanti eder.
 #
 # -----------------------------------------------------------------------------
 # FONKSİYON 6: get_account_masteries(conn, account_id, limit)
