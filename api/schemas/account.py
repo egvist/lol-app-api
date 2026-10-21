@@ -38,5 +38,18 @@
 #   - Kazanma oranı (winrate) gibi hesaplanan bir alanı modele nasıl eklersin?
 #     Pydantic "computed_field" araştır. wins+losses = 0 ise ne olmalı?
 #
+# CEVAP:
+#   - Evet, otomatik. Pydantic datetime'ı JSON'a ISO 8601 string'i olarak
+#     yazar: "2026-10-13T12:23:20.668849Z" ya da "...+03:00". TIMESTAMPTZ
+#     kolonları psycopg'den saat dilimli datetime olarak geldiği için saat
+#     dilimi bilgisi korunur.
+#   - @computed_field + @property ile tanımlanan değer, JSON çıktısına ve
+#     /docs şemasına normal bir alan gibi eklenir ama girdi olarak beklenmez:
+#       @computed_field
+#       @property
+#       def winrate(self) -> float | None: ...
+#   - wins + losses = 0 (ya da NULL) ise 0 değil None dön. 0 "hep kaybetti"
+#     anlamına gelir; None "hesaplanamıyor" demektir.
+#
 # YASAK: riot_id_history tablosundan hiçbir alan burada OLMAYACAK.
 # =============================================================================

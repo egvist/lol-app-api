@@ -24,4 +24,16 @@
 #   - Leaderboard pahalı bir sorgu olabilir ve saniyede değişmiyor. Basit bir
 #     bellek içi cache (ör. 60 saniye) nasıl yapılır? functools.lru_cache neden
 #     burada tek başına yeterli değil? (İpucu: süre dolması / TTL.)
+#
+# CEVAP:
+#   - Basit TTL cache: bir dict'te anahtar = (platform, queue, limit, offset),
+#     değer = (kayıt zamanı, sonuç). İstek gelince time.monotonic() ile kayıt
+#     60 saniyeden yeniyse onu dön, değilse sorguyu çalıştırıp kaydet. Hazır
+#     paket: cachetools.TTLCache.
+#   - lru_cache'in süresi yok: ilk sonucu process yeniden başlayana kadar
+#     döner; sync LP'yi güncellese de API eski listeyi gösterir. Ayrıca bütün
+#     argümanları anahtar yapar; conn parametresi her istekte farklı bir nesne
+#     olduğu için cache hiç tutmaz.
+#   - Not: bellek içi cache her worker process'inde ayrıdır. Birden çok worker
+#     ya da sunucu için ortak cache gerekirse Redis gibi bir şey kullanılır.
 # =============================================================================

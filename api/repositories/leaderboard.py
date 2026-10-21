@@ -7,11 +7,22 @@
 #     satırları rank_position sırasıyla getir. Oyuncu slug'ı için players ile JOIN.
 #   ARAŞTIR: View sadece ACTIVE sezonu gösteriyor. Neden? View tanımındaki
 #     WHERE koşullarını oku (sql/schema.sql).
+#   CEVAP: View'ın WHERE'i: s.status = 'ACTIVE', r.finalized_at IS NULL,
+#     current_tier ve current_lp NOT NULL, platform_id NOT NULL. Bu bir
+#     "current" leaderboard: sadece şu anki sezonun bitmemiş, rank'i bilinen
+#     ve sunucusu çözülmüş hesaplarını sıralar. Biten sezonların satırları
+#     dondurulmuş eski durumlardır; karışırsa geçen sezonun LP'si bu sezonla
+#     yarışır. Sunucusu belli olmayan hesap hangi listeye gireceğini bilemez,
+#     rank'i olmayan hesap da sıralanamaz.
 #
 # FONKSİYON 2: list_platforms(conn)
 #   GÖREV: riot_accounts'ta bulunan, NULL olmayan farklı platform_id'leri döndür.
 #     Frontend'deki "sunucu seç" listesi için.
 #   ARAŞTIR: SELECT DISTINCT
+#   CEVAP: SELECT DISTINCT tekrar eden satırları tek satıra indirir:
+#     SELECT DISTINCT platform_id FROM riot_accounts
+#     WHERE platform_id IS NOT NULL ORDER BY platform_id;
+#     Aynı sonucu GROUP BY platform_id de verir.
 #
 # FONKSİYON 3: list_seasons(conn)
 # FONKSİYON 4: get_active_season(conn)

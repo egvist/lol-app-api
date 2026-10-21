@@ -48,17 +48,18 @@ Kural: Bir adımın **KONTROL** kısmı çalışmadan sonraki adıma geçme. Her
 
 ### Aşama 1: Temel (veritabanı yok)
 
-- [ ] **Adım 0:** `requirements.txt` (kök dizin): API paketlerini ekle (`fastapi`, `uvicorn[standard]`, `psycopg_pool`, `pytest`, `httpx`) ve `py -m pip install -r requirements.txt` çalıştır.
-  ARAŞTIR: `==` ile `>=,<` sürüm yazımı arasındaki fark ne? Hangisini neden seçersin?
-- [ ] **Adım 1:** `main.py` → sadece "ADIM 1" bölümü: `app` nesnesi ve `GET /health`.
+- [x] **Adım 0:** `requirements.txt` (kök dizin): API paketlerini ekle (`fastapi`, `uvicorn[standard]`, `psycopg_pool`, `pytest`, `httpx`) ve `py -m pip install -r requirements.txt` çalıştır.
+  ARAŞTIR: `==` ile `>=,<` sürüm yazımı arasındaki fark ne? Hangisini neden seçersin?\
+  CEVAP: `==` tam bir sürümü sabitler: her kurulum aynıdır, ama güvenlik ve hata düzeltmeleri ancak elle yükseltince gelir ve başka paketlerle sürüm çakışması çıkabilir. `>=3.2,<4` bir aralık verir: küçük güncellemeler otomatik gelir, `<4` üst sınırı ise kodu bozabilecek bir sonraki büyük sürümü (semantic versioning'de MAJOR) dışarıda tutar; ama iki kurulum farklı sürüm alabilir. Uygulamada tekrarlanabilirlik önemliyse `==` (ya da aralık + `pip freeze` ile ayrı bir lock dosyası), başkalarının kuracağı bir kütüphanede `>=,<` seçilir. Bu proje kök `requirements.txt` dosyasında API paketleri için aralık kullanıyor.
+- [x] **Adım 1:** `main.py` → sadece "ADIM 1" bölümü: `app` nesnesi ve `GET /health`.
   ✔ `py -m uvicorn api.main:app --reload` çalışıyor, `/health` → `{"status":"ok"}`
 
 ### Aşama 2: Veritabanına bağlanma
 
-- [ ] **Adım 2:** `config.py`: `.env` okuma, `settings` nesnesi.
+- [x] **Adım 2:** `config.py`: `.env` okuma, `settings` nesnesi.
   ✔ Python konsolunda `settings.pg_host` doğru değeri gösteriyor
-- [ ] **Adım 3:** `db.py`: havuz, `open_pool` / `close_pool`, `get_conn`.
-- [ ] **Adım 3b:** `main.py` → "ADIM 3" ve "ADIM 3b": lifespan'i bağla, `/health` veritabanını da kontrol etsin.
+- [x] **Adım 3:** `db.py`: havuz, `open_pool` / `close_pool`, `get_conn`.
+- [x] **Adım 3b:** `main.py` → "ADIM 3" ve "ADIM 3b": lifespan'i bağla, `/health` veritabanını da kontrol etsin.
   ✔ PostgreSQL açıkken `"database": "ok"`, kapalıyken 503
 
 ### Aşama 3: İlk kaynak, players (en önemli aşama, acele etme)
@@ -113,6 +114,8 @@ py -m uvicorn api.main:app --reload
 Sonra tarayıcıda http://127.0.0.1:8000/docs adresini aç. FastAPI senin yazdığın endpoint'ler için buraya otomatik bir deneme sayfası koyar.
 
 ARAŞTIR: `api.main:app` ifadesindeki `api.main` ve `app` neyi gösteriyor? `--reload` ne işe yarar, production'da neden kullanılmaz?
+
+CEVAP: `api.main` import edilecek module'dür (`api/main.py`); `:` sonrasındaki `app` o module içindeki FastAPI nesnesinin adıdır. Uvicorn bunu `from api.main import app` gibi import eder. `--reload` kod dosyaları değişince sunucuyu otomatik yeniden başlatır; geliştirirken her değişiklikte sunucuyu elle kapatıp açmazsın. Production'da kullanılmaz: dosyaları sürekli izlemek kaynak harcar, `--workers` ile birlikte çalışmaz (tek process kalır) ve deploy sırasında dosyalar kopyalanırken sunucu yarım kodla yeniden başlayabilir.
 
 ## Kurallar (unutma)
 

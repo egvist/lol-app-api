@@ -28,6 +28,18 @@
 #   - Pydantic Field(): description ve examples vermek /docs sayfasını
 #     nasıl iyileştiriyor?
 #
+# CEVAP:
+#   - players: country_code, main_role, profile_image_url NULL olabilir
+#     (nickname ve slug NOT NULL). riot_accounts: puuid, platform_id,
+#     summoner_level, profile_icon_id, last_synced_at NULL olabilir.
+#     player_socials'ta platform ve url NOT NULL. NULL olabilenler modelde
+#     `str | None = None`.
+#   - Evet: class PlayerDetail(PlayerSummary). Ortak alanlar tek yerde durur;
+#     PlayerSummary'ye bir alan eklersen detaya da otomatik eklenir.
+#   - Field(description="ISO 3166-1 alpha-2 ülke kodu", examples=["GR"]):
+#     /docs'ta alanın yanında açıklama, örnek cevapta gerçekçi bir değer
+#     görünür. Frontend yazan kişi kodu açmadan alanın ne olduğunu anlar.
+#
 # KARAR VER (cevabın doğrusu yok, ama nedenini yazabilmelisin):
 #   - created_at / updated_at dışarı verilmeli mi?
 #   - id dışarı verilmeli mi, yoksa sadece slug mı? URL'lerde hangisini

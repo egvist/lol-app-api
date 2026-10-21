@@ -33,6 +33,17 @@
 #   - queue_id 420 = SoloQ, 440 = Flex (docs/riot-sync.md). Sayıyı mı
 #     döndürmeli, yoksa "SOLO"/"FLEX" gibi okunur bir ad mı eklemeli?
 #
+# CEVAP:
+#   - psycopg JSONB'yi otomatik çözer: string değil, Python list/dict gelir.
+#     items_json: lolapp_riot_sync.py item0..item6'dan 7 elemanlı bir sayı
+#     listesi yazıyor, boş slot 0 → list[int].
+#     bans_json: Riot'un team.bans listesi aynen:
+#     [{"championId": 266, "pickTurn": 1}, ...] → list[dict[str, int]] ya da
+#     champion_id / pick_turn alanlı küçük bir Ban modeli.
+#   - İkisini birden dön: queue_id (Riot'un resmî değeri, filtrelerde
+#     kullanılır) + queue_name ("SOLO"/"FLEX"). Ad sabit bir sözlükten gelir;
+#     bilinmeyen bir id için None.
+#
 # YASAK: matches.raw_data (ham Riot JSON) dışarı VERİLMEYECEK. Çok büyük ve
 #   gereksiz. Neden response modelinde olmayan bir alanın dışarı sızamayacağını
 #   araştır: "response_model filtreleme".

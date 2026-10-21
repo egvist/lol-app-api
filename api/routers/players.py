@@ -30,6 +30,20 @@
 #   - Neden limit'e üst sınır koymak zorundasın? limit=1000000 isteği sunucuya
 #     ne yapar?
 #
+# CEVAP:
+#   - Kurallar parametreye yazılır: Query(ge=1, le=settings.max_page_size),
+#     Query(ge=0), Query(min_length=2, max_length=2). FastAPI bunları kontrol
+#     eder ve /docs'ta gösterir. Büyük harfe çevirme bir kural değil,
+#     endpoint içinde country.upper() ile yapılır.
+#   - 422 Unprocessable Entity: istek düzgün biçimli ama içindeki değer
+#     kurallara uymuyor; FastAPI/Pydantic doğrulama hataları bunu kullanır.
+#     400 Bad Request daha genel: "istek hatalı". Kendi iş kurallarında
+#     (ör. "2030 sezonu yok") 400 ya da 404'ü sen seçersin.
+#   - Üst sınır yoksa limit=1000000 tek istekte bütün tabloyu okur, hepsini
+#     belleğe alır, JSON'a çevirip gönderir. Bellek, CPU ve bir DB bağlantısı
+#     uzun süre meşgul olur; birkaç böyle istek API'yi yavaşlatır (kolay bir
+#     DoS yolu).
+#
 # -----------------------------------------------------------------------------
 # ENDPOINT 2: GET /players/{slug}
 # -----------------------------------------------------------------------------
@@ -47,6 +61,18 @@
 #     "REST resource naming" araştır.
 #   - response_model parametresi ne yapıyor? Repository fazladan bir alan
 #     döndürürse (ör. created_at) cevapta görünür mü?
+#
+# CEVAP:
+#   - Path parametresi URL yolunun parçasıdır (/players/{slug}); belirli bir
+#     kaynağı gösterir ve zorunludur. Query parametresi ?'den sonra gelir
+#     (/players?role=MIDDLE); genelde isteğe bağlıdır ve listeyi filtreler,
+#     sıralar ya da sayfalar. REST'te path "hangi kaynak", query "kaynağın
+#     hangi alt kümesi" sorusunu cevaplar. slug olmadan oyuncu yoktur; role
+#     olmadan da liste vardır, sadece filtresizdir.
+#   - response_model dönen veriyi o modele göre doğrular ve filtreler:
+#     modelde olmayan alanlar cevaptan atılır. Repository created_at döndürse
+#     bile PlayerDetail'de yoksa cevapta görünmez. /docs'taki cevap şeması da
+#     bu modelden üretilir.
 #
 # -----------------------------------------------------------------------------
 # ENDPOINT 3: GET /players/{slug}/ranks?season=2026
