@@ -53,3 +53,12 @@
 #
 # YASAK: riot_id_history tablosundan hiçbir alan burada OLMAYACAK.
 # =============================================================================
+
+from pydantic import BaseModel
+
+class AccountSummary(BaseModel):
+    id: int
+    game_name: str | None
+    tag_line: str | None
+    platform_id: str
+    summoner_name: int | None
