@@ -97,7 +97,8 @@
 #   /v2) bağlaman gerektiğinde işe yarar. İkisini birden verirsen prefix'ler
 #   birleşir: include_router(prefix="/v1") + router prefix "/players"
 #   → /v1/players.
-#
+
+
 # -----------------------------------------------------------------------------
 # BONUS (Adım 10)
 # -----------------------------------------------------------------------------
@@ -108,7 +109,7 @@
 # =============================================================================
 
 from contextlib import asynccontextmanager
-
+from api.routers import players
 from fastapi import FastAPI, HTTPException
 from psycopg import OperationalError
 from psycopg_pool import PoolTimeout
@@ -132,6 +133,7 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+app.include_router(players.router)
 
 @app.get("/health")
 def health_check():

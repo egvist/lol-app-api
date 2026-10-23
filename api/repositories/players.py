@@ -113,7 +113,7 @@
 # =============================================================================
 
 
-
+from api.schemas.account import SeasonRank, RankValue
 from psycopg.rows import dict_row
 
 
@@ -176,7 +176,7 @@ def list_players(conn, search, role, country, limit, offset):
 
 def get_player_by_slug(conn, slug):
     query = """
-        SELECT id, nickname, slug, country_code, main_role
+        SELECT id, nickname, slug, country_code, main_role, profile_image_url
         FROM players
         WHERE slug = %(slug)s
     """
@@ -214,3 +214,56 @@ def get_player_accounts(conn, player_id):
         accounts = cur.fetchall()
 
     return accounts
+
+
+def get_player_ranks(conn, player_id, season):
+    query = """
+    SELECT
+        asr.account_id,
+        rs.label AS season_label,
+        asr.queue_type,
+        asr.current_tier,
+        asr.current_division,
+        asr.current_lp,
+        asr.current_wins,
+        asr.current_losses,
+        asr.peak_tier,
+        asr.peak_division,
+        asr.peak_lp
+    FROM riot_accounts ra
+    INNER JOIN account_season_ranks asr 
+        ON ra.id = asr.account_id
+    INNER JOIN ranked_seasons rs 
+        ON asr.season_id = rs.id
+    WHERE ra.player_id = %(player_id)s 
+        AND rs.season_year = %(season)s
+    """
+
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(query, {"player_id": player_id, "season": season})
+        rows = cur.fetchall()
+        ranks = []
+        for row in rows:
+            current = RankValue(
+                tier=row["current_tier"],
+                division=row["current_division"],
+                lp=row["current_lp"],
+                wins=row["current_wins"],
+                losses=row["current_losses"]
+            )
+            peak = RankValue(
+                tier=row["peak_tier"],
+                division=row["peak_division"],
+                lp=row["peak_lp"]
+            )
+
+            rank = SeasonRank(
+                account_id=row["account_id"],
+                season_label=row["season_label"],
+                queue_type=row["queue_type"],
+                current=current,
+                peak=peak
+            )
+
+            ranks.append(rank)
+        return ranks

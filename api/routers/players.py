@@ -8,7 +8,77 @@
 #   - APIRouter oluştur: prefix="/players", tags=["players"]
 #   - İhtiyacın olanlar: Depends, HTTPException, Query, Path (fastapi'den),
 #     get_conn (api.db), settings (api.config), schemas ve repositories modülleri.
-#
+
+from fastapi import APIRouter, Query, Depends, HTTPException, Path
+from api.db import get_conn
+from api.config import settings
+from api.schemas.common import Page, Role
+from api.schemas.player import PlayerSummary, PlayerDetail
+from api.schemas.account import SeasonRank
+from api.repositories import players as player_repo
+from psycopg import Connection
+
+router = APIRouter(
+    prefix="/players",
+    tags=["players"]
+)
+
+@router.get("", response_model=Page[PlayerSummary])
+def get_players(conn: Connection = Depends(get_conn), search: str|None = Query(default=None), role: Role | None = Query(default=None), country: str | None = Query(default=None), limit: int = Query(default=settings.default_page_size, ge=1, le=settings.max_page_size), offset: int = Query(default=0, ge=0)):
+    if country is not None:
+        country = country.upper()
+
+    players, total = player_repo.list_players(conn, search, role, country, limit, offset)
+
+    page = Page[PlayerSummary](
+        items=players,
+        total=total,
+        limit=limit,
+        offset=offset
+    )
+    return page
+
+@router.get("/{slug}", response_model=PlayerDetail)
+def get_player_detail(conn: Connection = Depends(get_conn), slug: str = Path(min_length=1)):
+
+    player = player_repo.get_player_by_slug(conn, slug)
+    
+    if player is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Player not found"
+        )
+    account = player_repo.get_player_accounts(conn, player["id"])
+    social = player_repo.get_player_socials(conn, player["id"])
+    detail = PlayerDetail(
+        id=player["id"],
+        nickname=player["nickname"],
+        slug=player["slug"],
+        country_code=player["country_code"],
+        main_role=player["main_role"],
+        profile_image_url=player["profile_image_url"],
+        # burada **player yazsak yukaridakileri tek tek yazmaya gerek kalmiyormus
+        socials=social,
+        accounts=account
+    )
+    return detail
+
+
+@router.get("/{slug}/ranks", response_model=list[SeasonRank])
+def get_player_ranks(slug: str = Path(min_length=1), season: int = Query(...), conn: Connection = Depends(get_conn)):
+    player_detail = player_repo.get_player_by_slug(conn, slug)
+
+    if player_detail is None:
+        raise HTTPException(
+            status_code=404,
+            detail= "Player not found"
+        )
+
+    player = player_repo.get_player_ranks(conn, player_detail["id"], season)
+    return player
+    
+
+
 # -----------------------------------------------------------------------------
 # ENDPOINT 1: GET /players
 # -----------------------------------------------------------------------------
