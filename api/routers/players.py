@@ -9,8 +9,9 @@
 #   - İhtiyacın olanlar: Depends, HTTPException, Query, Path (fastapi'den),
 #     get_conn (api.db), settings (api.config), schemas ve repositories modülleri.
 
-from fastapi import APIRouter, Query, Depends, HTTPException, Path
+from fastapi import APIRouter, Query, Depends, HTTPException, Path, BackgroundTasks
 from api.db import get_conn
+from api.services.rank_refresh import refresh_player_ranks
 from api.config import settings
 from api.schemas.common import Page, Role
 from api.schemas.player import PlayerSummary, PlayerDetail
@@ -65,18 +66,28 @@ def get_player_detail(conn: Connection = Depends(get_conn), slug: str = Path(min
 
 
 @router.get("/{slug}/ranks", response_model=list[SeasonRank])
-def get_player_ranks(slug: str = Path(min_length=1), season: int = Query(...), conn: Connection = Depends(get_conn)):
-    player_detail = player_repo.get_player_by_slug(conn, slug)
+def get_player_ranks(
+    background_tasks: BackgroundTasks,
+    slug: str = Path(min_length=1),
+    season: int = Query(...),
+    conn: Connection = Depends(get_conn),
+):
+    player = player_repo.get_player_by_slug(conn, slug)
+    if player is None:
+        raise HTTPException(status_code=404, detail="Player not found")
 
-    if player_detail is None:
-        raise HTTPException(
-            status_code=404,
-            detail= "Player not found"
-        )
+    # Yalnızca ACTIVE sezon isteklerinde otomatik yenile.
+    with conn.cursor() as cur:
+        cur.execute("SELECT season_year FROM ranked_seasons WHERE status='ACTIVE'")
+        active = cur.fetchone()
+    if active is not None:
+        active_year = active["season_year"] if isinstance(active, dict) else active[0]
+        if active_year == season:
+            background_tasks.add_task(refresh_player_ranks, player["id"])
 
-    player = player_repo.get_player_ranks(conn, player_detail["id"], season)
-    return player
-    
+    # Stale-while-revalidate: ilk istekte eski veri (veya []) gelir.
+    return player_repo.get_player_ranks(conn, player["id"], season)
+
 
 
 # -----------------------------------------------------------------------------

@@ -54,7 +54,9 @@
 # YASAK: riot_id_history tablosundan hiçbir alan burada OLMAYACAK.
 # =============================================================================
 
-from pydantic import BaseModel
+from datetime import datetime
+from pydantic import BaseModel, Field
+
 
 class AccountSummary(BaseModel):
     id: int
@@ -76,3 +78,23 @@ class SeasonRank(BaseModel):
     queue_type: str
     current: RankValue
     peak: RankValue
+
+
+class AccountDetail(AccountSummary):
+    player_id: int
+
+
+class RankHistoryEntry(BaseModel):
+    tier: str | None = None
+    division: str | None = None
+    lp: int | None = None
+    wins: int | None = None
+    losses: int | None = None
+    observed_at: datetime
+
+
+class RankHistoryResponse(BaseModel):
+    account_id: int
+    season_label: str
+    queue_type: str
+    history: list[RankHistoryEntry] = Field(default_factory=list)

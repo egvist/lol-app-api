@@ -71,7 +71,7 @@ Her kaynakta sıra **aynı**: önce schema, sonra repository, en son router.
 - [x] **Adım 4c:** `schemas/player.py`: `SocialLink`, `PlayerSummary`, `PlayerDetail`
 - [x] **Adım 5:** `repositories/players.py` → fonksiyon 1–4 (5 bonus, sonra). Her sorguyu **önce pgAdmin'de** çalıştır.
 - [x] **Adım 6:** `routers/players.py` → endpoint 1, 2, 3 (4 bonus, sonra)
-- [ ] **Adım 6b:** `main.py` → "ADIM 6+": players router'ını `include_router` ile bağla.
+- [x] **Adım 6b:** `main.py` → "ADIM 6+": players router'ını `include_router` ile bağla.
   ✔ `/players`, `/players/vladi`, `/players/yok` (404), `/players?role=ADC` (422)
 
 ### Aşama 4: Testler
