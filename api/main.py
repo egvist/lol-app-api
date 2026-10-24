@@ -151,8 +151,7 @@ app = FastAPI(
 
 # Shared limiter instance
 app.state.limiter = limiter
-# Apply default limits to API routes
-app.add_middleware(SlowAPIMiddleware)
+
 
 # Consistent JSON response for rate limit errors
 async def rate_limit_handler(
@@ -175,7 +174,8 @@ app.add_exception_handler(
     rate_limit_handler,
 )
 
-
+# Apply default limits to API routes
+app.add_middleware(SlowAPIMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
