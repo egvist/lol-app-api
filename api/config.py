@@ -70,6 +70,7 @@ class Settings:
         self.pool_max_size = int(os.getenv("POOL_MAX_SIZE", 10))
         self.default_page_size = int(os.getenv("DEFAULT_PAGE_SIZE", 20))
         self.max_page_size = int(os.getenv("MAX_PAGE_SIZE", 100))
+        self.pandascore_token = os.getenv("PANDASCORE_TOKEN", "")
  
     # property settingsi daha sonra .() olmadan almamizi saglar ve cachelemez her seferinde yeniden hesaplar.
     @property
