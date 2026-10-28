@@ -18,6 +18,8 @@ from api.schemas.player import PlayerSummary, PlayerDetail
 from api.schemas.account import SeasonRank
 from api.repositories import players as player_repo
 from psycopg import Connection
+from api.schemas.pro import ProProfileResponse
+from api.services.player_enrichment import get_pro_profile
 
 router = APIRouter(
     prefix="/players",
@@ -88,6 +90,18 @@ def get_player_ranks(
     # Stale-while-revalidate: ilk istekte eski veri (veya []) gelir.
     return player_repo.get_player_ranks(conn, player["id"], season)
 
+@router.get("/{slug}/pro-profile", response_model = ProProfileResponse)
+def get_player_pro_profile(slug: str, conn: Connection = Depends(get_conn)):
+    player = player_repo.get_player_by_slug(conn, slug)
+
+    if player is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Player not found",
+        )
+    print("PLAYER:", player)
+    print("PLAYER TYPE:", type(player))
+    return get_pro_profile(dict(player))
 
 
 # -----------------------------------------------------------------------------

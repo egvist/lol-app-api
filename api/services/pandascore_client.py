@@ -82,3 +82,50 @@ class PandaScoreClient:
                 candidates[player["id"]] = player
 
         return list(candidates.values())
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
+    def get_player_tournaments(self, player_id: int, page: int = 1, per_page: int = 50,):
+        if player_id < 1:
+            raise ValueError("Invalid player ID")
+
+        if page < 1 or not 1 <= per_page <= 100:
+            raise ValueError("Invalid pagination parameters")
+
+        return self.get(
+            f"/players/{player_id}/tournaments",
+            params={
+                "page": page,
+                "per_page": per_page,
+            },
+        )
+
+
+    def get_all_player_tournaments(
+        self,
+        player_id: int,
+    ) -> list[dict]:
+
+        all_tournaments = []
+        page = 1
+        per_page = 100
+
+        while True:
+            tournaments = self.get_player_tournaments(
+                player_id=player_id,
+                page=page,
+                per_page=per_page,
+            )
+
+            all_tournaments.extend(tournaments)
+
+            if len(tournaments) < per_page:
+                break
+
+            page += 1
+
+        return all_tournaments
