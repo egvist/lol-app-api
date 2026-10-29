@@ -1,6 +1,19 @@
 import httpx
-
+from copy import deepcopy
+from threading import RLock
+from api.services.pandascore_limiter import pandascore_limiter
+from cachetools import TTLCache
 from api.config import settings
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
+from api.services.pandascore_limiter import pandascore_limiter
+
+pandascore_cache = TTLCache(
+    maxsize=2000,
+    ttl=3600,
+)
+
+cache_lock = RLock()
 
 class PandaScoreError(Exception):
     """PandaScore API request failed."""
@@ -22,16 +35,54 @@ class PandaScoreClient:
             timeout=15.0
         )
 
-    def get(self, path:str, params:dict | None = None):
+    def get(self, path: str, params: dict | None = None):
+        cache_key = (
+            path,
+            tuple(sorted((params or {}).items())),
+        )
+
+        with cache_lock:
+            cached_data = pandascore_cache.get(cache_key)
+        
+        if cached_data is not None:
+            return deepcopy(cached_data)
+        
+        pandascore_limiter.acquire()
+
         try:
             response = self.client.get(path, params=params)
             response.raise_for_status()
-            return response.json()
+
+            data = response.json()
+
+            with cache_lock:
+                pandascore_cache[cache_key] = deepcopy(data)
+
+            return data
+
         except httpx.HTTPStatusError as exc:
-            status = exc.response_code
-            raise PandaScoreError(f"PandaScore returned HTTP {status}") from exc
+            status = exc.response.status_code
+
+            if status == 429:
+                retry_after = parse_retry_after(
+                    exc.response.headers.get("Retry-After")
+                )
+
+                pandascore_limiter.set_cooldown(retry_after)
+
+                raise PandaScoreError(
+                    f"PandaScore rate limit exceeded. "
+                    f"Retry after {retry_after:.0f} seconds."
+                ) from exc
+
+            raise PandaScoreError(
+                f"PandaScore returned HTTP {status}"
+            ) from exc
+
         except httpx.RequestError as exc:
-            raise PandaScoreError("Could not connect to PandaScore") from exc
+            raise PandaScoreError(
+                "Could not connect to PandaScore"
+            ) from exc
 
     def get_players(self, page: int = 1, per_page: int = 20):
         if page < 1 or not 1 <= per_page <= 100:
@@ -129,3 +180,35 @@ class PandaScoreClient:
             page += 1
 
         return all_tournaments
+
+    def get_tournament_matches(self, tournament_id: int, page: int = 1, per_page: int = 100,):
+        if tournament_id < 1:
+            raise ValueError("Invalid tournament ID")
+
+        if page < 1 or not 1 <= per_page <= 100:
+            raise ValueError("Invalid pagination parameters")
+
+        return self.get(f"/tournaments/{tournament_id}/matches", params={"page": page, "per_page":per_page},)
+
+
+def parse_retry_after(value: str | None) -> float:
+    if not value:
+        return 60.0
+
+    value = value.strip()
+
+    if value.isdecimal():
+        return float(value)
+
+    try:
+        retry_date = parsedate_to_datetime(value)
+
+        if retry_date.tzinfo is None:
+            retry_date = retry_date.replace(tzinfo=timezone.utc)
+
+        return max(
+            0.0,
+            (retry_date - datetime.now(timezone.utc)).total_seconds(),
+        )
+    except (TypeError, ValueError, OverflowError):
+        return 60.0
