@@ -1,7 +1,9 @@
 .venv/
 __pycache__/
 *.pyc
-.env
 data/
 .pytest_cache/
 /frontend/
+.env
+.env.*
+!.env.example

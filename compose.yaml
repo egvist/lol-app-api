@@ -1,3 +1,4 @@
+
 services:
   api:
     build:
@@ -8,5 +9,34 @@ services:
     env_file:
       - ./backend/.env
     environment:
-      PGHOST: host.docker.internal
+      PGHOST: db
+      PGPORT: "5432"
+      PGDATABASE: lol-data
+      PGUSER: postgres
+      PGPASSWORD: ${PGPASSWORD:?Set PGPASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
     restart: unless-stopped
+
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${PGPASSWORD:?Set PGPASSWORD}
+      POSTGRES_DB: lol-data
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - postgres18_data:/var/lib/postgresql
+      - ./database:/backup:ro
+      - ./database/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d lol-data"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres18_data:
+  postgres18_test_data:
