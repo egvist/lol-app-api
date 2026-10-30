@@ -110,7 +110,8 @@ def test_get_account_not_found(client, monkeypatch):
     response = client.get("/accounts/999999")
 
     assert response.status_code == 404
-    assert response.json()["detail"] == "Account not found"
+    assert response.json()["error"]["code"] == "NOT_FOUND"
+    assert response.json()["error"]["message"] == "Account not found"
 
 
 # ============================================================
@@ -255,9 +256,8 @@ def test_get_account_rank_history_season_not_found(
         },
     )
 
-    assert response.status_code == 404
-    assert response.json()["detail"] == "Season not found"
-
+    assert response.json()["error"]["code"] == "NOT_FOUND"
+    assert response.json()["error"]["message"] == "Season not found"
 
 def test_get_account_rank_history_account_not_found(
     client, monkeypatch

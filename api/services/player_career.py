@@ -2,7 +2,7 @@ from api.services.pandascore_client import PandaScoreClient,PandaScoreError
 from api.services.player_matching import match_player
 from threading import Condition
 from cachetools import TTLCache, cached
-
+from datetime import datetime, timezone
 career_cache = TTLCache(maxsize=1000, ttl=3600)
 matches_cache = TTLCache(maxsize=2000, ttl=21600)
 
@@ -128,20 +128,45 @@ def get_player_career(
     ]
 
     for entry in page_entries:
+        team_id = entry["team"]["id"]
+        tournament_id = entry["tournament_id"]
+
+        # Turnuva henüz bitmediyse final placement gösterme.
+        end_at = entry.get("end_at")
+
+        is_finished = False
+
+        if end_at:
+            end_date = datetime.fromisoformat(
+                end_at.replace("Z", "+00:00")
+            )
+            is_finished = end_date <= datetime.now(timezone.utc)
+
+        if is_finished:
+            try:
+                standings = load_tournament_standings(
+                    tournament_id
+                )
+
+                entry["placement"] = extract_placement(
+                    standings=standings,
+                    team_id=team_id,
+                )
+
+            except PandaScoreError:
+                entry["placement"] = None
+
         try:
             matches = load_tournament_matches(
-                entry["tournament_id"]
+                tournament_id
             )
 
         except PandaScoreError:
-            # Bir turnuvanın maçları alınamasa da
-            # kariyer kayıtları kaybolmasın.
-            # 429 sonrası yeni isteklerle zorlamayalım.
             break
 
         entry["last_result"] = find_last_result(
             matches=matches,
-            team_id=entry["team"]["id"],
+            team_id=team_id,
         )
 
     return {
@@ -152,6 +177,38 @@ def get_player_career(
         "offset": offset,
         "items": page_entries,
     }
+
+def load_tournament_standings(tournament_id: int) -> list[dict]:
+    with PandaScoreClient() as client:
+        return client.get_tournament_standings(
+            tournament_id=tournament_id
+        )
+    
+def extract_placement(
+    standings: list[dict],
+    team_id: int,
+) -> str | None:
+
+    for entry in standings:
+        team = entry.get("team") or {}
+
+        if team.get("id") != team_id:
+            continue
+
+        rank = entry.get("rank")
+
+        if not isinstance(rank, int) or isinstance(rank, bool) or rank < 1:
+            return None
+
+        suffix = (
+            "th"
+            if 11 <= rank % 100 <= 13
+            else {1: "st", 2: "nd", 3: "rd"}.get(rank % 10, "th")
+        )
+
+        return f"{rank}{suffix}"
+
+    return None
 
 def find_last_result(matches: list[dict], team_id: int, ) -> dict | None:
         relevant_matches = []

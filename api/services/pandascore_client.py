@@ -191,6 +191,198 @@ class PandaScoreClient:
         return self.get(f"/tournaments/{tournament_id}/matches", params={"page": page, "per_page":per_page},)
 
 
+    def get_tournament_standings(
+    self,
+    tournament_id: int,
+    page: int = 1,
+    per_page: int = 100,):
+        if tournament_id < 1:
+            raise ValueError("Invalid tournament ID")
+
+        if page < 1 or not 1 <= per_page <= 100:
+            raise ValueError("Invalid pagination parameters")
+
+        return self.get(
+            f"/tournaments/{tournament_id}/standings",
+            params={
+                "page": page,
+                "per_page": per_page,
+            },
+        )
+    def get_teams(
+        self,
+        page: int = 1,
+        per_page: int = 20,
+        search: str | None = None,
+    ):
+        if page < 1 or not 1 <= per_page <= 100:
+            raise ValueError("Invalid pagination parameters")
+
+        params = {
+            "page": page,
+            "per_page": per_page,
+        }
+
+        if search and search.strip():
+            params["search[name]"] = search.strip()
+
+        return self.get(
+            "/lol/teams",
+            params=params,
+        )
+
+
+    def get_team(self, team_id: int):
+        if team_id < 1:
+            raise ValueError("Invalid team ID")
+
+        return self.get(f"/teams/{team_id}")
+
+        
+    def get_running_lol_series(
+        self,
+        page: int = 1,
+        per_page: int = 20,
+    ):
+        if page < 1 or not 1 <= per_page <= 100:
+            raise ValueError("Invalid pagination parameters")
+
+        return self.get(
+            "/lol/series/running",
+            params={
+                "page": page,
+                "per_page": per_page,
+            },
+        )
+
+
+    def get_series_teams(
+        self,
+        series_id: int,
+        page: int = 1,
+        per_page: int = 100,
+    ):
+        if series_id < 1:
+            raise ValueError("Invalid series ID")
+
+        if page < 1 or not 1 <= per_page <= 100:
+            raise ValueError("Invalid pagination parameters")
+
+        return self.get(
+            f"/lol/series/{series_id}/teams",
+            params={
+                "page": page,
+                "per_page": per_page,
+            },
+        )
+    def get_lol_leagues(
+    self,
+    page: int = 1,
+    per_page: int = 100,
+    ):
+        return self.get(
+            "/lol/leagues",
+            params={
+                "page": page,
+                "per_page": per_page,
+            },
+        )
+    
+    def get_league_series(
+    self,
+    league_id: int,
+    page: int = 1,
+    per_page: int = 100,
+    ):
+        if league_id < 1 or page < 1:
+            raise ValueError("Invalid league ID or page")
+
+        if not 1 <= per_page <= 100:
+            raise ValueError("Invalid per_page")
+
+        return self.get(
+            f"/leagues/{league_id}/series",
+            params={
+                "page": page,
+                "per_page": per_page,
+                "sort": "-begin_at",
+            },
+        )
+    
+    def get_series_tournaments(
+        self,
+        series_id: int,
+        page: int = 1,
+        per_page: int = 100,
+    ):
+        if series_id < 1 or page < 1:
+            raise ValueError("Invalid series ID or page")
+
+        if not 1 <= per_page <= 100:
+            raise ValueError("Invalid per_page")
+
+        return self.get(
+            f"/series/{series_id}/tournaments",
+            params={
+                "page": page,
+                "per_page": per_page,
+            },
+        )
+    
+    def get_league_matches(
+        self,
+        league_id: int,
+        page: int = 1,
+        per_page: int = 100,
+        status: str | None = None,
+    ):
+        if league_id < 1 or page < 1:
+            raise ValueError("Invalid league ID or page")
+
+        if not 1 <= per_page <= 100:
+            raise ValueError("Invalid per_page")
+
+        params = {"page": page, "per_page": per_page}
+
+        if status is not None:
+            params["filter[status]"] = status
+
+        return self.get(
+            f"/leagues/{league_id}/matches",
+            params=params,
+        )
+
+
+    def get_team_matches(
+        self,
+        team_id: int,
+        page: int = 1,
+        per_page: int = 100,
+        status: str | None = None,
+    ):
+        if team_id < 1 or page < 1:
+            raise ValueError("Invalid team ID or page")
+
+        if not 1 <= per_page <= 100:
+            raise ValueError("Invalid per_page")
+
+        params = {"page": page, "per_page": per_page}
+
+        if status is not None:
+            params["filter[status]"] = status
+
+        return self.get(
+            f"/teams/{team_id}/matches",
+            params=params,
+        )
+
+    def get_tournament(self, tournament_id: int):
+        if tournament_id < 1:
+            raise ValueError("Invalid tournament ID")
+
+        return self.get(
+            f"/tournaments/{tournament_id}"
+        )
 def parse_retry_after(value: str | None) -> float:
     if not value:
         return 60.0
