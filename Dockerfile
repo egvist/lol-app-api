@@ -1,17 +1,20 @@
-
 FROM python:3.12-slim
 
 WORKDIR /app
 
-COPY requirements.txt .
+# Install dependencies
+COPY backend/requirements.txt ./requirements.txt
 
 RUN pip install --no-cache-dir -r requirements.txt
 
 # FastAPI application
-COPY api/ ./api/
+COPY backend/api/ ./api/
 
-# Riot API rank sync module used by rank_refresh.py
-COPY lolapp_rank_sync.py ./
+# Riot API rank sync module
+COPY backend/lolapp_rank_sync.py ./
+
+# PandaScore league and team catalog data
+COPY backend/data/ ./data/
 
 EXPOSE 8000
 
