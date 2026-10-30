@@ -37,6 +37,11 @@ def mock_leaderboard(monkeypatch, entries=None, total=1):
         "get_leaderboard_total",
         lambda conn, season, queue_type: total,
     )
+    monkeypatch.setattr(
+        leaderboard_repo,
+        "season_exists",
+        lambda conn, season: True,
+    )
 
 
 def test_leaderboard_success(client, monkeypatch):
