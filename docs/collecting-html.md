@@ -5,7 +5,7 @@ Importer'ın okuduğu `pages.jsonl` dosyası, LOLPros oyuncu sayfalarının
 kaydedilmesiyle üretildi. Bu doküman uçtan uca akışı anlatır:
 
 ```
-urls.txt  ──►  url-html-collector  ──►  output/pages.jsonl  ──►  data/pages.jsonl  ──►  scrapper/lolapp_import_html.py  ──►  PostgreSQL
+urls.txt  ──►  url-html-collector  ──►  output/pages.jsonl  ──►  data/pages.jsonl  ──►  scraper/lolapp_import_html.py  ──►  PostgreSQL
 ```
 
 `url-html-collector`, sayfaları görünür bir CloakBrowser penceresinde açıp
@@ -83,18 +83,19 @@ Importer bu alanları şöyle kullanır:
 
 ## 4. Dosyayı importer'a verme
 
-`output/pages.jsonl` dosyasını bu repodaki `data/` klasörüne kopyala. `data/`
+`output/pages.jsonl` dosyasını bu repodaki `backend/data/` klasörüne kopyala. `data/`
 git'e girmez; HTML'ler büyük olabilir ve yerelde kalmalıdır.
 
 ```bash
-cp ../url-html-collector/output/pages.jsonl data/pages.jsonl
+cp ../url-html-collector/output/pages.jsonl backend/data/pages.jsonl
 ```
 
 Önce veritabanına dokunmadan kontrol et, sonra yaz:
 
 ```bash
-py -u scrapper/lolapp_import_html.py data/pages.jsonl --dry-run --limit 5
-py -u scrapper/lolapp_import_html.py data/pages.jsonl 2>&1 | tee import.log
+cd backend
+py -u scraper/lolapp_import_html.py data/pages.jsonl --dry-run --limit 5
+py -u scraper/lolapp_import_html.py data/pages.jsonl 2>&1 | tee import.log
 ```
 
 Her profil için `OK ...` (dry-run) veya `SAVED ...` satırı, hatalı kayıtlar için

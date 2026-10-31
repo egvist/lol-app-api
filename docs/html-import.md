@@ -1,6 +1,6 @@
 # LOLPros JSONL → PostgreSQL importer (`lolapp_import_html.py`)
 
-> Bu script `data/` klasöründe durur ve git'e girmez; sadece yerel makinede bulunur.
+> Script `backend/scraper/lolapp_import_html.py` konumundadır. Aşağıdaki komutlar `backend/` klasöründe çalıştırılır; `data/pages.jsonl` git'e girmez.
 
 Bu sürüm **gönderilen gerçek export formatına** göre hazırlandı. Her kayıt aşağıdaki yapıda bir JSON nesnesidir:
 
@@ -19,7 +19,7 @@ Kurulum (`.env`, bağımlılıklar, şema) için kök dizindeki [README](../READ
 **Önce 5 oyuncuyu test et (DB'ye dokunmaz):**
 
 ```bash
-py -u data/lolapp_import_html.py data/pages.jsonl --dry-run --limit 5
+py -u scraper/lolapp_import_html.py data/pages.jsonl --dry-run --limit 5
 ```
 
 Gerçek dosyan `.txt` ise `data/pages.jsonl` yerine kendi TXT dosya adını yaz. İçerik JSONL ise uzantının `.txt` olması sorun değil.
@@ -27,19 +27,19 @@ Gerçek dosyan `.txt` ise `data/pages.jsonl` yerine kendi TXT dosya adını yaz.
 **İlk 5 oyuncuyu PostgreSQL'e yaz (bağlantıyı test etmek için):**
 
 ```bash
-py -u data/lolapp_import_html.py data/pages.jsonl --limit 5
+py -u scraper/lolapp_import_html.py data/pages.jsonl --limit 5
 ```
 
 **Bütün kayıtları PostgreSQL'e yaz:**
 
 ```bash
-py -u data/lolapp_import_html.py data/pages.jsonl 2>&1 | tee import.log
+py -u scraper/lolapp_import_html.py data/pages.jsonl 2>&1 | tee import.log
 ```
 
 **Yarıda kesilirse örneğin 2501. kayıttan devam et:**
 
 ```bash
-py -u data/lolapp_import_html.py data/pages.jsonl --start-at 2501 2>&1 | tee import_resume.log
+py -u scraper/lolapp_import_html.py data/pages.jsonl --start-at 2501 2>&1 | tee import_resume.log
 ```
 
 > `--start-at` tek bir büyük dosyada pratik kullanım içindir. Tekrar baştan çalıştırmak da güvenlidir: mevcut oyuncu `slug`'ı, sosyal bağlantılar ve Riot hesapları tekrar oluşturulmaz. Eski HTML, mevcut Current LP değerlerini ezmez. Bir profil ayrı transaction ile kaydedilir: işlem yarıda kesilse önceki başarılı kayıtlar saklanır.
@@ -47,13 +47,13 @@ py -u data/lolapp_import_html.py data/pages.jsonl --start-at 2501 2>&1 | tee imp
 **Bir klasörde farklı dosyalar:**
 
 ```bash
-py -u data/lolapp_import_html.py saved_players/ 2>&1 | tee import.log
+py -u scraper/lolapp_import_html.py saved_players/ 2>&1 | tee import.log
 ```
 
 **İlk iki oyuncunun parse edilmiş JSON çıktısını incele:**
 
 ```bash
-py data/lolapp_import_html.py data/pages.jsonl --dry-run --limit 2 --print-json
+py scraper/lolapp_import_html.py data/pages.jsonl --dry-run --limit 2 --print-json
 ```
 
 Program her profil için `OK ...` veya `SAVED ...` yazdırır; hata varsa `ERROR ...` ve dosya/URL bilgisi basar. `--dry-run` PostgreSQL bağlantısı açmaz.
