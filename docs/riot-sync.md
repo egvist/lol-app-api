@@ -4,7 +4,7 @@ Bu script mevcut **25 tabloluk PostgreSQL v2 şemasına** yazar. `pages.jsonl` d
 
 ## 1. Ön koşul
 
-Kurulum (`.env`, bağımlılıklar, şema) için kök dizindeki [README](../README.md) dosyasına bak. `.env` içinde `RIOT_API_KEY` dolu olmalı ([developer.riotgames.com](https://developer.riotgames.com/)). DB'de **tam bir ACTIVE** ranked season olmalı; program sezonu kendisi oluşturmaz:
+Kurulum (`.env`, bağımlılıklar, şema) için kök dizindeki [README](../README.md) dosyasına bak. Komutlar `backend/` klasöründe çalıştırılır. `.env` içinde `RIOT_API_KEY` dolu olmalı ([developer.riotgames.com](https://developer.riotgames.com/)). DB'de **tam bir ACTIVE** ranked season olmalı; program sezonu kendisi oluşturmaz:
 
 ```sql
 SELECT id, label, season_year, status FROM ranked_seasons;

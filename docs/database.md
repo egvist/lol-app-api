@@ -1,6 +1,6 @@
 # LoLApp — PostgreSQL 25 tablo / ilişkiler / veri akışı
 
-> Kaynak: `sql/schema.sql` (PostgreSQL 15+). Bu belge açıklayıcıdır, DB şemasını kendisi değiştirmez.
+> Kaynak: [`backend/sql/schema.sql`](../backend/sql/schema.sql) (PostgreSQL 15+). Bu belge açıklayıcıdır, DB şemasını kendisi değiştirmez.
 
 ## Mimari özeti
 
