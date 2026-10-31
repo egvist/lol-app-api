@@ -40,10 +40,10 @@ def leagues_list(
             limit=limit,
             offset=offset,
         )
-    except FileNotFoundError as exc:
+    except (PandaScoreError, PandaScoreRateLimitError) as exc:
         raise HTTPException(
             status_code=503,
-            detail="League catalog unavailable",
+            detail="PandaScore league data unavailable",
         ) from exc
 
 
@@ -71,10 +71,10 @@ def league_teams(
             offset=offset,
         )
 
-    except FileNotFoundError as exc:
+    except (PandaScoreError, PandaScoreRateLimitError) as exc:
         raise HTTPException(
-            status_code=404,
-            detail=str(exc),
+            status_code=503,
+            detail="PandaScore league teams unavailable",
         ) from exc
 @router.get(
     "/{league_id}/series",
@@ -102,12 +102,6 @@ def league_series(
             offset=offset,
         )
 
-    except FileNotFoundError as exc:
-        raise HTTPException(
-            status_code=503,
-            detail="League catalog unavailable",
-        ) from exc
-
     except (PandaScoreError, PandaScoreRateLimitError) as exc:
         raise HTTPException(
             status_code=503,
@@ -124,10 +118,10 @@ def league_detail(
     try:
         league = get_league_detail(league_id)
 
-    except FileNotFoundError as exc:
+    except (PandaScoreError, PandaScoreRateLimitError) as exc:
         raise HTTPException(
             status_code=503,
-            detail="League catalog unavailable",
+            detail="PandaScore league data unavailable",
         ) from exc
 
     if league is None:
@@ -162,12 +156,6 @@ def league_matches(
             limit=limit,
             offset=offset,
         )
-
-    except FileNotFoundError as exc:
-        raise HTTPException(
-            status_code=503,
-            detail="League catalog unavailable",
-        ) from exc
 
     except (PandaScoreError, PandaScoreRateLimitError) as exc:
         raise HTTPException(

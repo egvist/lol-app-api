@@ -8,6 +8,10 @@ from api.services.team_soloq_summary import (
 )
 from api.services.team_ranking import calculate_team_ranking
 from threading import Lock
+from copy import deepcopy
+
+from api.services.pandascore_limiter import PandaScoreRateLimitError
+from api.services.pandascore_client import PandaScoreError
 
 from api.services.pandascore_client import PandaScoreClient
 from api.services.team_discovery import discover_running_teams
@@ -15,6 +19,11 @@ from api.services.team_leaderboard_cache import (
     get_cached_leaderboard,
     set_cached_leaderboard,
 )
+
+# In-process progress: persists between requests, but not across Docker restarts.
+# One worker is assumed. Use a database-backed job for multi-worker production.
+MAX_TEAMS_PER_REQUEST = 5
+_leaderboard_progress: dict[int, dict] = {}
 
 _leaderboard_build_lock = Lock()
 def get_team_soloq_roster(
@@ -139,37 +148,77 @@ def get_teams_leaderboard(
     limit: int = 10,
     offset: int = 0,
 ) -> dict:
-
+    # Only finished rankings live in the existing one-hour cache.
     ranked_teams = get_cached_leaderboard(season)
+    if ranked_teams is not None:
+        return {
+            "season": season,
+            "total": len(ranked_teams),
+            "limit": limit,
+            "offset": offset,
+            "items": ranked_teams[offset:offset + limit],
+        }
 
-    if ranked_teams is None:
-        with _leaderboard_build_lock:
-            # Başka bir request cache'i doldurmuş olabilir.
-            ranked_teams = get_cached_leaderboard(season)
+    with _leaderboard_build_lock:
+        ranked_teams = get_cached_leaderboard(season)
+        if ranked_teams is not None:
+            return {
+                "season": season,
+                "total": len(ranked_teams),
+                "limit": limit,
+                "offset": offset,
+                "items": ranked_teams[offset:offset + limit],
+            }
 
-            if ranked_teams is None:
+        progress = _leaderboard_progress.get(season)
+        if progress is None:
+            try:
                 with PandaScoreClient() as client:
-                    discovered_teams = discover_running_teams(
-                        client,
-                        max_series=20,
+                    discovered = discover_running_teams(
+                        client, max_series=20, season=season,
                     )
+            except (PandaScoreRateLimitError, PandaScoreError):
+                # Discovery itself may exhaust the budget. Do not cache an empty
+                # ranking as complete; the next request can retry discovery.
+                discovered = None
 
-                teams = []
+            if discovered is not None:
+                progress = {
+                    "ids": list(dict.fromkeys(
+                        item["id"] for item in discovered
+                        if isinstance(item.get("id"), int)
+                    )),
+                    "next": 0,
+                    "teams": [],
+                }
+                _leaderboard_progress[season] = progress
 
-                for team in discovered_teams:
+        if progress is not None:
+            attempted = 0
+            while (
+                progress["next"] < len(progress["ids"])
+                and attempted < MAX_TEAMS_PER_REQUEST
+            ):
+                team_id = progress["ids"][progress["next"]]
+                try:
                     team_data = get_team_soloq(
-                        conn=conn,
-                        team_id=team["id"],
-                        season=season,
+                        conn=conn, team_id=team_id, season=season,
                     )
-                    teams.append(team_data)
+                except (PandaScoreRateLimitError, PandaScoreError):
+                    # Keep this team pending. Retry once the API budget recovers.
+                    break
 
-                ranked_teams = build_team_leaderboard(teams)
+                progress["teams"].append(team_data)
+                progress["next"] += 1
+                attempted += 1
 
-                set_cached_leaderboard(
-                    season,
-                    ranked_teams,
-                )
+            # Build rankings from a copy: ranking computation sorts/mutates its input.
+            ranked_teams = build_team_leaderboard(deepcopy(progress["teams"]))
+            if progress["next"] == len(progress["ids"]):
+                set_cached_leaderboard(season, ranked_teams)
+                del _leaderboard_progress[season]
+        else:
+            ranked_teams = []
 
     return {
         "season": season,
