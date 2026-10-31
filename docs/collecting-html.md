@@ -1,111 +1,193 @@
-# LOLPros HTML'lerini toplama (`url-html-collector`)
+# Collecting LOLPros Player HTML (`url-html-collector`)
 
-Importer'ın okuduğu `pages.jsonl` dosyası, LOLPros oyuncu sayfalarının
-[egvist/url-html-collector](https://github.com/egvist/url-html-collector) ile
-kaydedilmesiyle üretildi. Bu doküman uçtan uca akışı anlatır:
+This guide documents how the initial `pages.jsonl` dataset was created from LOLPros player profile pages, and how that dataset is imported into the LoLApp PostgreSQL database.
 
+The HTML collector is maintained separately at [egvist/url-html-collector](https://github.com/egvist/url-html-collector). It is **not** part of this repository.
+
+## Data pipeline
+
+```text
+urls.txt
+   |
+   v
+url-html-collector
+   |
+   v
+output/pages.jsonl
+   |
+   | copy to LoLApp
+   v
+backend/data/pages.jsonl
+   |
+   v
+backend/scraper/lolapp_import_html.py
+   |
+   v
+PostgreSQL
 ```
-urls.txt  ──►  url-html-collector  ──►  output/pages.jsonl  ──►  data/pages.jsonl  ──►  scraper/lolapp_import_html.py  ──►  PostgreSQL
-```
 
-`url-html-collector`, sayfaları görünür bir CloakBrowser penceresinde açıp
-render edilmiş HTML'yi her sayfa için bir JSON satırı olarak kaydeder.
-Collector ayrı bir repo; bu projeye dahil değil.
+The collector opens each URL in a visible CloakBrowser window, waits for the player profile to render, and saves the rendered HTML as one JSON object per line in a JSONL file.
 
-## 1. Collector kurulumu
+> **Scope:** This pipeline is intended for **initial player-data ingestion**. Ongoing rank and account updates use the Riot API synchronization process rather than repeatedly importing HTML snapshots.
 
-Python 3.10+ ve grafik masaüstü gerekir (tarayıcı görünür açılır).
+## 1. Install the collector
+
+Requirements:
+
+- Python 3.10 or newer
+- A graphical desktop environment (the browser window is visible)
+- Access to the separate collector repository
+
+From Git Bash on Windows:
 
 ```bash
-git clone https://github.com/egvist/url-html-collector
+git clone https://github.com/egvist/url-html-collector.git
 cd url-html-collector
 python -m venv .venv
-.venv/Scripts/python -m pip install -r requirements.txt   # Windows
+.venv/Scripts/python -m pip install -r requirements.txt
 cp urls.example.txt urls.txt
 ```
 
-İlk çalıştırmada CloakBrowser kendi Chromium'unu indirir.
+CloakBrowser downloads its own Chromium build on the first run.
 
-## 2. URL listesi
+## 2. Prepare the URL list
 
-`urls.txt` içine her satıra bir LOLPros oyuncu URL'si yaz. Boş satırlar ve
-`#` ile başlayan satırlar atlanır, tekrar eden URL'ler bir kez toplanır.
+Put one LOLPros player profile URL per line in `urls.txt`:
 
-```
+```text
 https://lolpros.gg/player/vladi
 https://lolpros.gg/player/caps
 ```
 
-Importer oyuncunun `slug` değerini URL'deki `/player/<slug>` kısmından alır.
-Bu yüzden listede profil URL'leri olmalı.
+The collector ignores blank lines and lines beginning with `#`, and collects duplicate URLs only once.
 
-## 3. HTML'leri toplama
+Use **player profile URLs**, because the importer derives the player's unique `slug` from the `/player/<slug>` portion of the URL.
 
-Önce birkaç sayfayla dene:
+## 3. Collect rendered HTML
 
-```bash
-.venv/Scripts/python collector.py --urls urls.txt --auto --resume --limit 5 \
-    --ready-selector ".profile-details h1.name" --timeout 180
-```
-
-Sonra listenin tamamını topla:
+Start with a small sample:
 
 ```bash
-.venv/Scripts/python collector.py --urls urls.txt --auto --resume \
-    --ready-selector ".profile-details h1.name" --timeout 180
+.venv/Scripts/python collector.py \
+  --urls urls.txt \
+  --auto --resume --limit 5 \
+  --ready-selector ".profile-details h1.name" \
+  --timeout 180
 ```
 
-- `--ready-selector ".profile-details h1.name"`: importer'ın profili tanımak için
-  aradığı element budur. Element sayfada belirmeden kayıt yapılmaz; böylece yarım
-  yüklenmiş veya hata sayfaları daha az kaydedilir.
-- `--auto`: soru sormadan kaydeder. Başarısız URL'ler `output/errors.jsonl`
-  dosyasına yazılır ve iş devam eder.
-- `--resume`: `output/pages.jsonl` içinde zaten olan URL'leri atlar. Yarıda kalan
-  toplamaya aynı komutla devam edilir.
-- Collector Cloudflare/CAPTCHA çözmez; doğrulama çıkarsa tarayıcıda elle geç.
-- Ctrl+C mevcut kayıt bitince güvenle durdurur. Zorla kapatılırsa dosyanın son
-  satırı yarım kalabilir; importer bu satırda durur, o satırı silip tekrar dene.
+Then collect the full URL list:
 
-Her başarılı sayfa `output/pages.jsonl` dosyasına tek satır olarak eklenir:
+```bash
+.venv/Scripts/python collector.py \
+  --urls urls.txt \
+  --auto --resume \
+  --ready-selector ".profile-details h1.name" \
+  --timeout 180
+```
+
+### Important options and behavior
+
+| Option / behavior | Description |
+|---|---|
+| `--ready-selector ".profile-details h1.name"` | Waits for the player-name element expected by the importer; helps avoid recording partially rendered profiles. |
+| `--auto` | Saves without interactive confirmation; failed URLs are written to `output/errors.jsonl`, and collection continues. |
+| `--resume` | Skips URLs already present in `output/pages.jsonl`, allowing interrupted collection to resume. |
+| `--limit 5` | Limits a test run to a small number of URLs. |
+| `--timeout 180` | Sets the page readiness timeout used by the collector. |
+
+The collector does **not** automatically solve Cloudflare or CAPTCHA challenges. If a verification page appears, complete it manually in the browser.
+
+Pressing `Ctrl+C` allows the current record to finish before stopping. A forced shutdown can leave a truncated final JSONL line. If the importer later fails to parse that line, remove the incomplete line and retry collection.
+
+### Output format
+
+Each successfully captured page is appended to `output/pages.jsonl` as a single JSON object:
 
 ```json
-{"requested_url":"https://lolpros.gg/player/vladi","url":"https://lolpros.gg/player/vladi","title":"Vladi on LOLPros.GG","body":"<body>...</body>","captured_at":"2026-10-13T12:23:20.668849+00:00"}
+{
+  "requested_url": "https://lolpros.gg/player/vladi",
+  "url": "https://lolpros.gg/player/vladi",
+  "title": "Vladi on LOLPros.GG",
+  "body": "<body>...</body>",
+  "captured_at": "2026-10-13T12:23:20.668849+00:00"
+}
 ```
 
-Importer bu alanları şöyle kullanır:
+The example above is formatted across multiple lines for readability; **the actual JSONL file must contain one complete JSON object per line**.
 
-| Alan | Kullanım |
+### How the importer uses the fields
+
+| Field | Importer usage |
 |---|---|
-| `body` | Profil HTML'si (oyuncu, sosyal linkler, Riot hesapları, rank kartları) |
-| `url` / `requested_url` | `slug` için; `url` yoksa `requested_url` kullanılır |
-| `captured_at` | İlk LP gözlem zamanı; yılı aktif sezondan farklıysa LP yazılmaz |
-| `title` | Kullanılmaz |
+| `body` | Rendered profile HTML: player identity, social links, Riot accounts, and rank cards. |
+| `url` / `requested_url` | Used to derive the player's `slug`; `requested_url` is the fallback. |
+| `captured_at` | Timestamp of the initial LP observation. If its year differs from the active ranked season, the importer does not write that LP observation. |
+| `title` | Not used by the importer. |
 
-## 4. Dosyayı importer'a verme
+## 4. Import the dataset into PostgreSQL
 
-`output/pages.jsonl` dosyasını bu repodaki `backend/data/` klasörüne kopyala. `data/`
-git'e girmez; HTML'ler büyük olabilir ve yerelde kalmalıdır.
+Copy the generated file into this repository's `backend/data/` directory.
+
+Assuming the collector and `lol-data` folders are siblings, and **from the `lol-data` repository root**:
 
 ```bash
 cp ../url-html-collector/output/pages.jsonl backend/data/pages.jsonl
 ```
 
-Önce veritabanına dokunmadan kontrol et, sonra yaz:
+`backend/data/` contains large, local datasets and should not be committed to Git unless a specific sanitized dataset is intentionally tracked. Check `.gitignore` before staging changes.
+
+Run a small dry run before writing to PostgreSQL:
 
 ```bash
 cd backend
-py -u scraper/lolapp_import_html.py data/pages.jsonl --dry-run --limit 5
-py -u scraper/lolapp_import_html.py data/pages.jsonl 2>&1 | tee import.log
+python -u scraper/lolapp_import_html.py data/pages.jsonl --dry-run --limit 5
 ```
 
-Her profil için `OK ...` (dry-run) veya `SAVED ...` satırı, hatalı kayıtlar için
-`ERROR ...` satırı basılır. Importer'ın tüm seçenekleri, doldurduğu tablolar ve
-LP/sezon kuralları için [html-import.md](html-import.md) dosyasına bak.
+Then perform the import:
 
-## 5. Yeniden toplama
+```bash
+python -u scraper/lolapp_import_html.py data/pages.jsonl 2>&1 | tee import.log
+```
 
-Importer'ı aynı veya güncellenmiş dosyayla tekrar çalıştırmak güvenlidir:
-oyuncular `slug` ile güncellenir, mevcut Current LP ezilmez. Ancak bu akış
-**ilk veri yüklemesi** içindir. Sonraki rank güncellemeleri
-`lolapp_riot_sync.py` ile Riot API'den gelir; yeni sezon için HTML yeniden
-toplanıp LP aktarılmaz.
+On a Windows installation where `py` is preferred, `py -u` may be used in place of `python -u`. When the virtual environment is activated, `python` is the simplest choice.
+
+The importer logs `OK ...` for successfully checked records during a dry run, `SAVED ...` for imported records, and `ERROR ...` for failed records.
+
+For the complete importer options, database tables, and LP/season handling rules, see [HTML import documentation](html-import.md).
+
+## 5. Recollecting or reimporting profiles
+
+Re-running the importer using the same or an updated dataset is supported:
+
+- Existing players are matched and updated by `slug`.
+- Existing current LP values are not overwritten by the initial HTML import.
+- The import remains an **initial ingestion** process, not the source of ongoing ranked updates.
+
+For later updates, use the Riot API synchronization script:
+
+```text
+backend/lolapp_riot_sync.py
+```
+
+In the current workflow, the relevant sections are `accounts` and `ranks`. Account identity and current/peak rank data are refreshed from Riot APIs, with ranked-season information maintained in PostgreSQL. Do not recollect old HTML pages to initialize LP for a new season.
+
+## 6. Data ownership and boundaries
+
+This collection pipeline primarily supplies the initial player, social-link, Riot-account, and rank-related records. It does **not** populate the professional-team or esports competition datasets.
+
+Those features are handled separately by the PandaScore integration and local discovery/catalog services. The distinction matters: LOLPros HTML, Riot Solo Queue ranks, and professional esports match data come from different sources and should not be treated as interchangeable.
+
+## 7. Troubleshooting checklist
+
+| Symptom | Check |
+|---|---|
+| A profile was not collected | Check `output/errors.jsonl`, browser verification pages, and whether the readiness selector still exists. |
+| Collector resumes without fetching an URL | The URL may already be present in `output/pages.jsonl`; `--resume` skips completed captures. |
+| JSON decoding fails at the end of `pages.jsonl` | Inspect the final line for truncation caused by an interrupted write. |
+| A player has no initial LP | Check the HTML rank card, `captured_at`, and active season year. Missing LP is not necessarily an import failure. |
+| Importer cannot find `data/pages.jsonl` | Run it from `backend/` as shown above, or adjust the path to match your working directory. |
+| Unexpected files appear in `git status` | Ensure large JSONL datasets, logs, and `.env` files are ignored before committing. |
+
+---
+
+**Related documentation:** [HTML importer](html-import.md) · [Collector repository](https://github.com/egvist/url-html-collector)

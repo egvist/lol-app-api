@@ -1,0 +1,15 @@
+
+services:
+  api:
+    ports: !override
+      - "127.0.0.1:8001:8000"
+
+  db:
+    ports: !reset []
+    volumes: !override
+      - postgres18_test_data:/var/lib/postgresql
+      - ./database:/backup:ro
+      - ./database/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+
+volumes:
+  postgres18_test_data:
