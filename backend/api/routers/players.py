@@ -1,13 +1,4 @@
-# =============================================================================
-# routers/players.py — /players endpoint'leri (Adım 6)
-# =============================================================================
-# İlk gerçek router'ın bu. Diğer router'lar da aynı kalıbı izleyecek.
-# Bunu iyi yaparsan geri kalanlar tekrar olacak.
-#
-# HAZIRLIK:
-#   - APIRouter oluştur: prefix="/players", tags=["players"]
-#   - İhtiyacın olanlar: Depends, HTTPException, Query, Path (fastapi'den),
-#     get_conn (api.db), settings (api.config), schemas ve repositories modülleri.
+
 from fastapi import Query
 from fastapi import APIRouter, Query, Depends, HTTPException, Path, BackgroundTasks
 from api.db import get_conn

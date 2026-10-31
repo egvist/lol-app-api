@@ -13,8 +13,6 @@ COPY backend/api/ ./api/
 # Riot API rank sync module
 COPY backend/lolapp_rank_sync.py ./
 
-# PandaScore league and team catalog data
-COPY backend/data/ ./data/
 
 EXPOSE 8000
 
