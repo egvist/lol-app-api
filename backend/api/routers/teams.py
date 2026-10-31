@@ -57,10 +57,10 @@ def team_leaderboard(
             limit=limit,
             offset=offset,
         )
-    except PandaScoreError as exc:
+    except (PandaScoreError, PandaScoreRateLimitError) as exc:
         raise HTTPException(
             status_code=503,
-            detail="Team leaderboard unavailable",
+            detail="Team leaderboard temporarily unavailable",
         ) from exc
     
 @router.get(
@@ -82,10 +82,10 @@ def team_catalog(
             limit=limit,
             offset=offset,
         )
-    except FileNotFoundError as exc:
+    except (PandaScoreError, PandaScoreRateLimitError) as exc:
         raise HTTPException(
-            status_code=404,
-            detail=str(exc),
+            status_code=503,
+            detail="PandaScore team catalog unavailable",
         ) from exc
 
 
