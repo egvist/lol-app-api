@@ -1,6 +1,3 @@
-
-
-
 from api.schemas.account import SeasonRank, RankValue
 from psycopg.rows import dict_row
 
